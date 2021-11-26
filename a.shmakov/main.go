@@ -13,28 +13,41 @@ func main() {
 	// Буферизированный канал передачи данных
 	transmission := make(chan int, dimensionTransmissionClannel)
 	// Канал синхронизации
-	syncing := make(chan bool)
+	syncing1 := make(chan bool)
+	syncing2 := make(chan bool)
 	// Четных элементы
 	evenNum := 0
 	// Не четных элементы
 	noEvenNum := 0
 
-	go producer(transmission)
-	go consumer(&evenNum, &noEvenNum, syncing, transmission)
+	go producer1(transmission)
+	go producer2(transmission)
+	go consumer1(&evenNum, &noEvenNum, syncing1, transmission)
+	go consumer2(&evenNum, &noEvenNum, syncing2, transmission)
+	<-syncing1
+	<-syncing2
 	// Чтобы программа не завершилась до запуска горутин
-	<-syncing
+
 	fmt.Print("Четных: ", evenNum, "\nНе четных: ", noEvenNum, "\n")
 
 }
 
-func producer(transmission chan int) {
+func producer1(transmission chan int) {
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < dimensionTransmissionClannel; i++ {
 		transmission <- rand.Intn(10000)
 	}
 }
 
-func consumer(evenNum *int, noEvenNum *int, syncing chan bool, transmission chan int) {
+func producer2(transmission chan int) {
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < dimensionTransmissionClannel; i++ {
+		transmission <- rand.Intn(10000)
+	}
+
+}
+
+func consumer1(evenNum *int, noEvenNum *int, syncing1 chan bool, transmission chan int) {
 	for i := 0; i < dimensionTransmissionClannel; i++ {
 		if <-transmission%2 == 0 {
 			*evenNum += 1
@@ -43,5 +56,17 @@ func consumer(evenNum *int, noEvenNum *int, syncing chan bool, transmission chan
 		}
 	}
 	// Чтобы избежать deadlock говорим каналу синхронизации что мы закончили операцию
-	syncing <- true
+	syncing1 <- true
+}
+
+func consumer2(evenNum *int, noEvenNum *int, syncing2 chan bool, transmission chan int) {
+	for i := 0; i < dimensionTransmissionClannel; i++ {
+		if <-transmission%2 == 0 {
+			*evenNum += 1
+		} else {
+			*noEvenNum += 1
+		}
+	}
+	// Чтобы избежать deadlock говорим каналу синхронизации что мы закончили операцию
+	syncing2 <- true
 }
